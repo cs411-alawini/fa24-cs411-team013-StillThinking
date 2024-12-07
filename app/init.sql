@@ -107,3 +107,53 @@ LINES TERMINATED BY '\n';
 -- CREATE USER 'StillThinking'@'%';
 -- GRANT ALL PRIVILEGES ON *.* TO 'StillThinking'@'%';
 -- FLUSH PRIVILEGES;
+
+-- Find matching job postings for a user based on matching skills (user meets all skill requirements for the job)
+DELIMITER $$
+CREATE PROCEDURE GetMatchingPostings(IN userId INT)
+BEGIN
+    SELECT
+        p.posting_id,
+        p.posting_title,
+        p.posting_description,
+        c.company_name
+    FROM
+        postings p
+        JOIN posting_skills ps ON p.posting_id = ps.posting_id
+        JOIN user_skills us ON us.skill_abbr = ps.skill_abbr
+        JOIN companies c ON c.company_id = p.company_id
+    WHERE
+        us.user_id = userId
+    GROUP BY
+        p.posting_id,
+        p.posting_title,
+        c.company_name
+    HAVING
+        COUNT(ps.skill_abbr) = (
+            SELECT
+                COUNT(skill_abbr)
+            FROM
+                posting_skills
+            WHERE
+                posting_id = p.posting_id
+        );
+END $$
+DELIMITER ;
+
+-- Find jobs based on user's expected salary
+DELIMITER $$
+CREATE PROCEDURE SearchForJobs(IN min_salary REAL, IN max_salary REAL)
+BEGIN
+    SELECT
+        p.posting_id,
+        p.posting_title,
+        p.posting_description,
+        c.company_name
+    FROM
+        postings p
+        JOIN jobs j ON p.job_id = j.job_id
+        JOIN companies c ON c.company_id = p.company_id
+    WHERE
+        j.med_salary < max_salary AND j.med_salary > min_salary;
+END $$
+DELIMITER ;
